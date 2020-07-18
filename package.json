@@ -1,0 +1,32 @@
+{
+  "name": "web-v-manage2.0",
+  "version": "1.0.0",
+  "description": "A system could run ns-3 code",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JeyoChan/Web-V-Manage2.0.git"
+  },
+  "author": "Jeyo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JeyoChan/Web-V-Manage2.0/issues"
+  },
+  "homepage": "https://github.com/JeyoChan/Web-V-Manage2.0#readme",
+  "devDependencies": {
+    "eslint": "^7.4.0"
+  },
+  "dependencies": {
+    "assert-plus": "^1.0.0",
+    "ioredis": "^4.17.3",
+    "log4js": "^6.3.0",
+    "md5-node": "^1.0.1",
+    "moment": "^2.27.0",
+    "restify": "^8.5.1",
+    "restify-errors": "^8.0.2",
+    "restify-router": "^0.6.1"
+  }
+}

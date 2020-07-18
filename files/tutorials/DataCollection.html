@@ -1,0 +1,444 @@
+<div class="body" role="main">
+            
+  <div class="section" id="data-collection">
+<h1>Data Collection<a class="headerlink" href="#data-collection" title="Permalink to this headline">¶</a></h1>
+<p>Our final tutorial chapter introduces some components that were added
+to <em>ns-3</em> in version 3.18, and that are still under development.  This
+tutorial section is also a work-in-progress.</p>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>One of the main points of running simulations is to generate output data,
+either for research purposes or simply to learn about the system.
+In the previous chapter, we introduced the tracing subsystem and
+the example <code class="docutils literal notranslate"><span class="pre">sixth.cc</span></code>. from which PCAP or ASCII trace files are
+generated.  These traces are valuable for data analysis using a
+variety of external tools, and for many users, such output data is
+a preferred means of gathering data (for analysis by external tools).</p>
+<p>However, there are also use cases for more than trace file generation,
+including the following:</p>
+<ul class="simple">
+<li>generation of data that does not map well to PCAP or ASCII traces, such
+as non-packet data (e.g. protocol state machine transitions),</li>
+<li>large simulations for which the disk I/O requirements for generating
+trace files is prohibitive or cumbersome, and</li>
+<li>the need for <em>online</em>  data reduction or computation, during the course
+of the simulation.  A good example of this is to define a termination
+condition for the simulation, to tell it when to stop when it has
+received enough data to form a narrow-enough confidence interval around
+the estimate of some parameter.</li>
+</ul>
+<p>The <em>ns-3</em> data collection framework is designed to provide these
+additional capabilities beyond trace-based output.  We recommend
+that the reader interested in this topic consult the <em>ns-3</em> Manual
+for a more detailed treatment of this framework; here, we summarize
+with an example program some of the developing capabilities.</p>
+</div>
+<div class="section" id="example-code">
+<h2>Example Code<a class="headerlink" href="#example-code" title="Permalink to this headline">¶</a></h2>
+<p>The tutorial example <code class="docutils literal notranslate"><span class="pre">examples/tutorial/seventh.cc</span></code> resembles the
+<code class="docutils literal notranslate"><span class="pre">sixth.cc</span></code> example we previously reviewed, except for a few changes.
+First, it has been enabled for IPv6 support with a command-line option:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CommandLine</span> <span class="n">cmd</span><span class="p">;</span>
+<span class="n">cmd</span><span class="p">.</span><span class="n">AddValue</span> <span class="p">(</span><span class="s">"useIpv6"</span><span class="p">,</span> <span class="s">"Use Ipv6"</span><span class="p">,</span> <span class="n">useV6</span><span class="p">);</span>
+<span class="n">cmd</span><span class="p">.</span><span class="n">Parse</span> <span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>If the user specifies <code class="docutils literal notranslate"><span class="pre">useIpv6</span></code>, option, the program will be run
+using IPv6 instead of IPv4.  The <code class="docutils literal notranslate"><span class="pre">help</span></code> option, available on all <em>ns-3</em>
+programs that support the CommandLine object as shown above, can
+be invoked as follows (please note the use of double quotes):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="p">.</span><span class="o">/</span><span class="n">waf</span> <span class="o">--</span><span class="n">run</span> <span class="s">"seventh --help"</span>
+</pre></div>
+</div>
+<p>which produces:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">ns3</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">seventh</span><span class="o">-</span><span class="n">debug</span> <span class="p">[</span><span class="n">Program</span> <span class="n">Arguments</span><span class="p">]</span> <span class="p">[</span><span class="n">General</span> <span class="n">Arguments</span><span class="p">]</span>
+
+<span class="n">Program</span> <span class="nl">Arguments</span><span class="p">:</span>
+    <span class="o">--</span><span class="nl">useIpv6</span><span class="p">:</span>  <span class="n">Use</span> <span class="n">Ipv6</span> <span class="p">[</span><span class="nb">false</span><span class="p">]</span>
+
+<span class="n">General</span> <span class="nl">Arguments</span><span class="p">:</span>
+    <span class="o">--</span><span class="nl">PrintGlobals</span><span class="p">:</span>              <span class="n">Print</span> <span class="n">the</span> <span class="n">list</span> <span class="n">of</span> <span class="n">globals</span><span class="p">.</span>
+    <span class="o">--</span><span class="nl">PrintGroups</span><span class="p">:</span>               <span class="n">Print</span> <span class="n">the</span> <span class="n">list</span> <span class="n">of</span> <span class="n">groups</span><span class="p">.</span>
+    <span class="o">--</span><span class="n">PrintGroup</span><span class="o">=</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">:</span>        <span class="n">Print</span> <span class="n">all</span> <span class="n">TypeIds</span> <span class="n">of</span> <span class="n">group</span><span class="p">.</span>
+    <span class="o">--</span><span class="nl">PrintTypeIds</span><span class="p">:</span>              <span class="n">Print</span> <span class="n">all</span> <span class="n">TypeIds</span><span class="p">.</span>
+    <span class="o">--</span><span class="n">PrintAttributes</span><span class="o">=</span><span class="p">[</span><span class="k">typeid</span><span class="p">]</span><span class="o">:</span>  <span class="n">Print</span> <span class="n">all</span> <span class="n">attributes</span> <span class="n">of</span> <span class="k">typeid</span><span class="p">.</span>
+    <span class="o">--</span><span class="nl">PrintHelp</span><span class="p">:</span>                 <span class="n">Print</span> <span class="k">this</span> <span class="n">help</span> <span class="n">message</span><span class="p">.</span>
+</pre></div>
+</div>
+<p>This default (use of IPv4, since useIpv6 is false) can be changed by
+toggling the boolean value as follows:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="p">.</span><span class="o">/</span><span class="n">waf</span> <span class="o">--</span><span class="n">run</span> <span class="s">"seventh --useIpv6=1"</span>
+</pre></div>
+</div>
+<p>and have a look at the pcap generated, such as with <code class="docutils literal notranslate"><span class="pre">tcpdump</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">tcpdump</span> <span class="o">-</span><span class="n">r</span> <span class="n">seventh</span><span class="p">.</span><span class="n">pcap</span> <span class="o">-</span><span class="n">nn</span> <span class="o">-</span><span class="n">tt</span>
+</pre></div>
+</div>
+<p>This has been a short digression into IPv6 support and the command line,
+which was also introduced earlier in this tutorial.  For a dedicated
+example of command line usage, please see
+<code class="docutils literal notranslate"><span class="pre">src/core/examples/command-line-example.cc</span></code>.</p>
+<p>Now back to data collection.  In the <code class="docutils literal notranslate"><span class="pre">examples/tutorial/</span></code> directory,
+type the following command: <code class="docutils literal notranslate"><span class="pre">diff</span> <span class="pre">-u</span> <span class="pre">sixth.cc</span> <span class="pre">seventh.cc</span></code>, and examine
+some of the new lines of this diff:</p>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="gi">+  std::string probeType;</span>
+<span class="gi">+  std::string tracePath;</span>
+<span class="gi">+  if (useV6 == false)</span>
+<span class="gi">+    {</span>
+   ...
+<span class="gi">+      probeType = "ns3::Ipv4PacketProbe";</span>
+<span class="gi">+      tracePath = "/NodeList/*/$ns3::Ipv4L3Protocol/Tx";</span>
+<span class="gi">+    }</span>
+<span class="gi">+  else</span>
+<span class="gi">+    {</span>
+   ...
+<span class="gi">+      probeType = "ns3::Ipv6PacketProbe";</span>
+<span class="gi">+      tracePath = "/NodeList/*/$ns3::Ipv6L3Protocol/Tx";</span>
+<span class="gi">+    }</span>
+ ...
+<span class="gi">+   // Use GnuplotHelper to plot the packet byte count over time</span>
+<span class="gi">+   GnuplotHelper plotHelper;</span>
+<span class="gi">+</span>
+<span class="gi">+   // Configure the plot.  The first argument is the file name prefix</span>
+<span class="gi">+   // for the output files generated.  The second, third, and fourth</span>
+<span class="gi">+   // arguments are, respectively, the plot title, x-axis, and y-axis labels</span>
+<span class="gi">+   plotHelper.ConfigurePlot ("seventh-packet-byte-count",</span>
+<span class="gi">+                             "Packet Byte Count vs. Time",</span>
+<span class="gi">+                             "Time (Seconds)",</span>
+<span class="gi">+                             "Packet Byte Count");</span>
+<span class="gi">+</span>
+<span class="gi">+   // Specify the probe type, trace source path (in configuration namespace), and</span>
+<span class="gi">+   // probe output trace source ("OutputBytes") to plot.  The fourth argument</span>
+<span class="gi">+   // specifies the name of the data series label on the plot.  The last</span>
+<span class="gi">+   // argument formats the plot by specifying where the key should be placed.</span>
+<span class="gi">+   plotHelper.PlotProbe (probeType,</span>
+<span class="gi">+                         tracePath,</span>
+<span class="gi">+                         "OutputBytes",</span>
+<span class="gi">+                         "Packet Byte Count",</span>
+<span class="gi">+                         GnuplotAggregator::KEY_BELOW);</span>
+<span class="gi">+</span>
+<span class="gi">+   // Use FileHelper to write out the packet byte count over time</span>
+<span class="gi">+   FileHelper fileHelper;</span>
+<span class="gi">+</span>
+<span class="gi">+   // Configure the file to be written, and the formatting of output data.</span>
+<span class="gi">+   fileHelper.ConfigureFile ("seventh-packet-byte-count",</span>
+<span class="gi">+                             FileAggregator::FORMATTED);</span>
+<span class="gi">+</span>
+<span class="gi">+   // Set the labels for this formatted output file.</span>
+<span class="gi">+   fileHelper.Set2dFormat ("Time (Seconds) = %.3e\tPacket Byte Count = %.0f");</span>
+<span class="gi">+</span>
+<span class="gi">+   // Specify the probe type, probe path (in configuration namespace), and</span>
+<span class="gi">+   // probe output trace source ("OutputBytes") to write.</span>
+<span class="gi">+   fileHelper.WriteProbe (probeType,</span>
+<span class="gi">+                          tracePath,</span>
+<span class="gi">+                          "OutputBytes");</span>
+<span class="gi">+</span>
+    Simulator::Stop (Seconds (20));
+    Simulator::Run ();
+    Simulator::Destroy ();
+</pre></div>
+</div>
+<p>The careful reader will have noticed, when testing the IPv6 command
+line attribute above, that <code class="docutils literal notranslate"><span class="pre">seventh.cc</span></code> had created a number of new output files:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="o">-</span><span class="mf">0.</span><span class="n">txt</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="o">-</span><span class="mf">1.</span><span class="n">txt</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">dat</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">plt</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">png</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>These were created by the additional statements introduced above; in
+particular, by a GnuplotHelper and a FileHelper.  This data was produced
+by hooking the data collection components to <em>ns-3</em> trace sources, and
+marshaling the data into a formatted <code class="docutils literal notranslate"><span class="pre">gnuplot</span></code> and into a formatted
+text file.  In the next sections, we’ll review each of these.</p>
+</div>
+<div class="section" id="gnuplothelper">
+<span id="id1"></span><h2>GnuplotHelper<a class="headerlink" href="#gnuplothelper" title="Permalink to this headline">¶</a></h2>
+<p>The GnuplotHelper is an <em>ns-3</em> helper object aimed at the production of
+<code class="docutils literal notranslate"><span class="pre">gnuplot</span></code> plots with as few statements as possible, for common cases.
+It hooks <em>ns-3</em> trace sources with data types supported by the
+data collection system.  Not all <em>ns-3</em> trace sources data types are
+supported, but many of the common trace types are, including TracedValues
+with plain old data (POD) types.</p>
+<p>Let’s look at the output produced by this helper:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">dat</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">plt</span>
+<span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>The first is a gnuplot data file with a series of space-delimited
+timestamps and packet byte counts.  We’ll cover how this particular
+data output was configured below, but let’s continue with the output
+files.  The file <code class="docutils literal notranslate"><span class="pre">seventh-packet-byte-count.plt</span></code> is a gnuplot plot file,
+that can be opened from within gnuplot.  Readers who understand gnuplot
+syntax can see that this will produce a formatted output PNG file named
+<code class="docutils literal notranslate"><span class="pre">seventh-packet-byte-count.png</span></code>.   Finally, a small shell script
+<code class="docutils literal notranslate"><span class="pre">seventh-packet-byte-count.sh</span></code> runs this plot file through gnuplot
+to produce the desired PNG (which can be viewed in an image editor); that
+is, the command:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">seventh</span><span class="o">-</span><span class="n">packet</span><span class="o">-</span><span class="n">byte</span><span class="o">-</span><span class="n">count</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>will yield <code class="docutils literal notranslate"><span class="pre">seventh-packet-byte-count.png</span></code>.  Why wasn’t this PNG
+produced in the first place?  The answer is that by providing the
+plt file, the user can hand-configure the result if desired, before
+producing the PNG.</p>
+<p>The PNG image title states that this plot is a plot of
+“Packet Byte Count vs. Time”, and that it is plotting the probed data
+corresponding to the trace source path:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>/NodeList/*/$ns3::Ipv6L3Protocol/Tx
+</pre></div>
+</div>
+<p>Note the wild-card in the trace path.  In summary, what this plot is
+capturing is the plot of packet bytes observed at the transmit trace
+source of the Ipv6L3Protocol object; largely 596-byte TCP segments
+in one direction, and 60-byte TCP acks in the other (two node
+trace sources were matched by this trace source).</p>
+<p>How was this configured?  A few statements need to be provided.  First,
+the GnuplotHelper object must be declared and configured:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>  <span class="c1">// Use GnuplotHelper to plot the packet byte count over time</span>
+<span class="o">+</span>  <span class="n">GnuplotHelper</span> <span class="n">plotHelper</span><span class="p">;</span>
+<span class="o">+</span>
+<span class="o">+</span>  <span class="c1">// Configure the plot.  The first argument is the file name prefix</span>
+<span class="o">+</span>  <span class="c1">// for the output files generated.  The second, third, and fourth</span>
+<span class="o">+</span>  <span class="c1">// arguments are, respectively, the plot title, x-axis, and y-axis labels</span>
+<span class="o">+</span>  <span class="n">plotHelper</span><span class="p">.</span><span class="n">ConfigurePlot</span> <span class="p">(</span><span class="s">"seventh-packet-byte-count"</span><span class="p">,</span>
+<span class="o">+</span>                            <span class="s">"Packet Byte Count vs. Time"</span><span class="p">,</span>
+<span class="o">+</span>                            <span class="s">"Time (Seconds)"</span><span class="p">,</span>
+<span class="o">+</span>                            <span class="s">"Packet Byte Count"</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>To this point, an empty plot has been configured.  The filename prefix
+is the first argument, the plot title is the second, the x-axis label
+the third, and the y-axis label the fourth argument.</p>
+<p>The next step is to configure the data, and here is where the trace
+source is hooked.  First, note above in the program we declared a few
+variables for later use:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">probeType</span><span class="p">;</span>
+<span class="o">+</span>  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">tracePath</span><span class="p">;</span>
+<span class="o">+</span>  <span class="n">probeType</span> <span class="o">=</span> <span class="s">"ns3::Ipv6PacketProbe"</span><span class="p">;</span>
+<span class="o">+</span>  <span class="n">tracePath</span> <span class="o">=</span> <span class="s">"/NodeList/*/$ns3::Ipv6L3Protocol/Tx"</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>We use them here:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>  <span class="c1">// Specify the probe type, trace source path (in configuration namespace), and</span>
+<span class="o">+</span>  <span class="c1">// probe output trace source ("OutputBytes") to plot.  The fourth argument</span>
+<span class="o">+</span>  <span class="c1">// specifies the name of the data series label on the plot.  The last</span>
+<span class="o">+</span>  <span class="c1">// argument formats the plot by specifying where the key should be placed.</span>
+<span class="o">+</span>  <span class="n">plotHelper</span><span class="p">.</span><span class="n">PlotProbe</span> <span class="p">(</span><span class="n">probeType</span><span class="p">,</span>
+<span class="o">+</span>                        <span class="n">tracePath</span><span class="p">,</span>
+<span class="o">+</span>                        <span class="s">"OutputBytes"</span><span class="p">,</span>
+<span class="o">+</span>                        <span class="s">"Packet Byte Count"</span><span class="p">,</span>
+<span class="o">+</span>                        <span class="n">GnuplotAggregator</span><span class="o">::</span><span class="n">KEY_BELOW</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The first two arguments are the name of the probe type and the trace source path.
+These two are probably the hardest to determine when you try to use
+this framework to plot other traces.  The probe trace here is the <code class="docutils literal notranslate"><span class="pre">Tx</span></code>
+trace source of class <code class="docutils literal notranslate"><span class="pre">Ipv6L3Protocol</span></code>.  When we examine this class
+implementation (<code class="docutils literal notranslate"><span class="pre">src/internet/model/ipv6-l3-protocol.cc</span></code>) we can
+observe:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="p">.</span><span class="n">AddTraceSource</span> <span class="p">(</span><span class="s">"Tx"</span><span class="p">,</span> <span class="s">"Send IPv6 packet to outgoing interface."</span><span class="p">,</span>
+                 <span class="n">MakeTraceSourceAccessor</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">Ipv6L3Protocol</span><span class="o">::</span><span class="n">m_txTrace</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>This says that <code class="docutils literal notranslate"><span class="pre">Tx</span></code> is a name for variable <code class="docutils literal notranslate"><span class="pre">m_txTrace</span></code>, which has
+a declaration of:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/**</span>
+<span class="cm"> * \brief Callback to trace TX (transmission) packets.</span>
+<span class="cm"> */</span>
+<span class="n">TracedCallback</span><span class="o">&lt;</span><span class="n">Ptr</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Packet</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Ptr</span><span class="o">&lt;</span><span class="n">Ipv6</span><span class="o">&gt;</span><span class="p">,</span> <span class="kt">uint32_t</span><span class="o">&gt;</span> <span class="n">m_txTrace</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>It turns out that this specific trace source signature is supported
+by a Probe class (what we need here) of class Ipv6PacketProbe.
+See the files <code class="docutils literal notranslate"><span class="pre">src/internet/model/ipv6-packet-probe.{h,cc}</span></code>.</p>
+<p>So, in the PlotProbe statement above, we see that the statement is
+hooking the trace source (identified by path string) with a matching
+<em>ns-3</em> Probe type of <code class="docutils literal notranslate"><span class="pre">Ipv6PacketProbe</span></code>.  If we did not support
+this probe type (matching trace source signature), we could have not
+used this statement (although some more complicated lower-level statements
+could have been used, as described in the manual).</p>
+<p>The Ipv6PacketProbe exports, itself, some trace sources that extract
+the data out of the probed Packet object:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">TypeId</span>
+<span class="n">Ipv6PacketProbe</span><span class="o">::</span><span class="n">GetTypeId</span> <span class="p">()</span>
+<span class="p">{</span>
+  <span class="k">static</span> <span class="n">TypeId</span> <span class="n">tid</span> <span class="o">=</span> <span class="n">TypeId</span> <span class="p">(</span><span class="s">"ns3::Ipv6PacketProbe"</span><span class="p">)</span>
+    <span class="p">.</span><span class="n">SetParent</span><span class="o">&lt;</span><span class="n">Probe</span><span class="o">&gt;</span> <span class="p">()</span>
+    <span class="p">.</span><span class="n">SetGroupName</span> <span class="p">(</span><span class="s">"Stats"</span><span class="p">)</span>
+    <span class="p">.</span><span class="n">AddConstructor</span><span class="o">&lt;</span><span class="n">Ipv6PacketProbe</span><span class="o">&gt;</span> <span class="p">()</span>
+    <span class="p">.</span><span class="n">AddTraceSource</span> <span class="p">(</span> <span class="s">"Output"</span><span class="p">,</span>
+                      <span class="s">"The packet plus its IPv6 object and interface that serve as the output for this probe"</span><span class="p">,</span>
+                      <span class="n">MakeTraceSourceAccessor</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">Ipv6PacketProbe</span><span class="o">::</span><span class="n">m_output</span><span class="p">))</span>
+    <span class="p">.</span><span class="n">AddTraceSource</span> <span class="p">(</span> <span class="s">"OutputBytes"</span><span class="p">,</span>
+                      <span class="s">"The number of bytes in the packet"</span><span class="p">,</span>
+                      <span class="n">MakeTraceSourceAccessor</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">Ipv6PacketProbe</span><span class="o">::</span><span class="n">m_outputBytes</span><span class="p">))</span>
+  <span class="p">;</span>
+  <span class="k">return</span> <span class="n">tid</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The third argument of our PlotProbe statement specifies that we are
+interested in the number of bytes in this packet; specifically, the
+“OutputBytes” trace source of Ipv6PacketProbe.
+Finally, the last two arguments of the statement provide the plot
+legend for this data series (“Packet Byte Count”), and an optional
+gnuplot formatting statement (GnuplotAggregator::KEY_BELOW) that we want
+the plot key to be inserted below the plot.  Other options include
+NO_KEY, KEY_INSIDE, and KEY_ABOVE.</p>
+</div>
+<div class="section" id="supported-trace-types">
+<h2>Supported Trace Types<a class="headerlink" href="#supported-trace-types" title="Permalink to this headline">¶</a></h2>
+<p>The following traced values are supported with Probes as of this writing:</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="25%">
+<col width="13%">
+<col width="13%">
+<col width="50%">
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">TracedValue type</th>
+<th class="head" colspan="2">Probe type</th>
+<th class="head">File</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>double</td>
+<td colspan="2">DoubleProbe</td>
+<td>stats/model/double-probe.h</td>
+</tr>
+<tr class="row-odd"><td>uint8_t</td>
+<td colspan="2">Uinteger8Probe</td>
+<td>stats/model/uinteger-8-probe.h</td>
+</tr>
+<tr class="row-even"><td>uint16_t</td>
+<td colspan="2">Uinteger16Probe</td>
+<td>stats/model/uinteger-16-probe.h</td>
+</tr>
+<tr class="row-odd"><td>uint32_t</td>
+<td colspan="2">Uinteger32Probe</td>
+<td>stats/model/uinteger-32-probe.h</td>
+</tr>
+<tr class="row-even"><td>bool</td>
+<td colspan="2">BooleanProbe</td>
+<td>stats/model/uinteger-16-probe.h</td>
+</tr>
+<tr class="row-odd"><td>ns3::Time</td>
+<td colspan="2">TimeProbe</td>
+<td>stats/model/time-probe.h</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The following TraceSource types are supported by Probes as of this writing:</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="32%">
+<col width="18%">
+<col width="11%">
+<col width="39%">
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">TracedSource type</th>
+<th class="head">Probe type</th>
+<th class="head">Probe outputs</th>
+<th class="head">File</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Ptr&lt;const Packet&gt;</td>
+<td>PacketProbe</td>
+<td>OutputBytes</td>
+<td>network/utils/packet-probe.h</td>
+</tr>
+<tr class="row-odd"><td>Ptr&lt;const Packet&gt;, Ptr&lt;Ipv4&gt;, uint32_t</td>
+<td>Ipv4PacketProbe</td>
+<td>OutputBytes</td>
+<td>internet/model/ipv4-packet-probe.h</td>
+</tr>
+<tr class="row-even"><td>Ptr&lt;const Packet&gt;, Ptr&lt;Ipv6&gt;, uint32_t</td>
+<td>Ipv6PacketProbe</td>
+<td>OutputBytes</td>
+<td>internet/model/ipv6-packet-probe.h</td>
+</tr>
+<tr class="row-odd"><td>Ptr&lt;const Packet&gt;, Ptr&lt;Ipv6&gt;, uint32_t</td>
+<td>Ipv6PacketProbe</td>
+<td>OutputBytes</td>
+<td>internet/model/ipv6-packet-probe.h</td>
+</tr>
+<tr class="row-even"><td>Ptr&lt;const Packet&gt;, const Address&amp;</td>
+<td>ApplicationPacketProbe</td>
+<td>OutputBytes</td>
+<td>applications/model/application-packet-probe.h</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>As can be seen, only a few trace sources are supported, and they are all
+oriented towards outputting the Packet size (in bytes).  However,
+most of the fundamental data types available as TracedValues can be
+supported with these helpers.</p>
+</div>
+<div class="section" id="filehelper">
+<h2>FileHelper<a class="headerlink" href="#filehelper" title="Permalink to this headline">¶</a></h2>
+<p>The FileHelper class is just a variation of the previous GnuplotHelper
+example.  The example program provides formatted output of the
+same timestamped data, such as follows:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">Time</span> <span class="p">(</span><span class="n">Seconds</span><span class="p">)</span> <span class="o">=</span> <span class="mf">9.312e+00</span>    <span class="n">Packet</span> <span class="n">Byte</span> <span class="n">Count</span> <span class="o">=</span> <span class="mi">596</span>
+<span class="n">Time</span> <span class="p">(</span><span class="n">Seconds</span><span class="p">)</span> <span class="o">=</span> <span class="mf">9.312e+00</span>    <span class="n">Packet</span> <span class="n">Byte</span> <span class="n">Count</span> <span class="o">=</span> <span class="mi">564</span>
+</pre></div>
+</div>
+<p>Two files are provided, one for node “0” and one for node “1” as can
+be seen in the filenames.  Let’s look at the code piece-by-piece:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>   <span class="c1">// Use FileHelper to write out the packet byte count over time</span>
+<span class="o">+</span>   <span class="n">FileHelper</span> <span class="n">fileHelper</span><span class="p">;</span>
+<span class="o">+</span>
+<span class="o">+</span>   <span class="c1">// Configure the file to be written, and the formatting of output data.</span>
+<span class="o">+</span>   <span class="n">fileHelper</span><span class="p">.</span><span class="n">ConfigureFile</span> <span class="p">(</span><span class="s">"seventh-packet-byte-count"</span><span class="p">,</span>
+<span class="o">+</span>                             <span class="n">FileAggregator</span><span class="o">::</span><span class="n">FORMATTED</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The file helper file prefix is the first argument, and a format specifier
+is next.
+Some other options for formatting include SPACE_SEPARATED, COMMA_SEPARATED,
+and TAB_SEPARATED.  Users are able to change the formatting (if
+FORMATTED is specified) with a format string such as follows:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>
+<span class="o">+</span>   <span class="c1">// Set the labels for this formatted output file.</span>
+<span class="o">+</span>   <span class="n">fileHelper</span><span class="p">.</span><span class="n">Set2dFormat</span> <span class="p">(</span><span class="s">"Time (Seconds) = %.3e</span><span class="se">\t</span><span class="s">Packet Byte Count = %.0f"</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Finally, the trace source of interest must be hooked.  Again, the probeType and
+tracePath variables in this example are used, and the probe’s output
+trace source “OutputBytes” is hooked:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>
+<span class="o">+</span>   <span class="c1">// Specify the probe type, trace source path (in configuration namespace), and</span>
+<span class="o">+</span>   <span class="c1">// probe output trace source ("OutputBytes") to write.</span>
+<span class="o">+</span>   <span class="n">fileHelper</span><span class="p">.</span><span class="n">WriteProbe</span> <span class="p">(</span><span class="n">probeType</span><span class="p">,</span>
+<span class="o">+</span>                          <span class="n">tracePath</span><span class="p">,</span>
+<span class="o">+</span>                          <span class="s">"OutputBytes"</span><span class="p">);</span>
+<span class="o">+</span>
+</pre></div>
+</div>
+<p>The wildcard fields in this trace source specifier match two trace sources.
+Unlike the GnuplotHelper example, in which two data series were overlaid
+on the same plot, here, two separate files are written to disk.</p>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>Data collection support is new as of ns-3.18, and basic support for
+providing time series output has been added.  The basic pattern described
+above may be replicated within the scope of support of the existing
+probes and trace sources.  More capabilities including statistics
+processing will be added in future releases.</p>
+</div>
+</div>
+
+
+          </div>

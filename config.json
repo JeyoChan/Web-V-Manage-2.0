@@ -1,0 +1,52 @@
+{
+  "EnvVariable": {
+    "typeOfFile": {
+      "tutorial": "html",
+      "code": "cc"
+    }
+  },
+
+  "RedisConfig": {
+    "RedisHost": "127.0.0.1",
+    "RedisPort": 6379,
+    "Password": "",
+    "DB": 0,
+    "TaskQueue": "RedisTaskQueue",
+    "keyPrefix": "Web-V_",
+    "DockerServiceSub": "RedisDockerSub",
+    "Responsesuffix": "_Response"
+  },
+
+  "RedisSecretConfig": {
+    "RegisterKeyPath": "RedisDockerRegisterKey",
+    "RegisterDefaultKey": "Web-V"
+  },
+
+  "LogConfig": {
+    "appenders": {
+      "infoLogs": {
+        "type": "dateFile",
+        "filename": "/logs/info/info",
+        "pattern": ".yyyy-MM-dd",
+        "alwaysIncludePattern": true
+      },
+      "errorLogs": {
+        "type": "dateFile",
+        "filename": "/logs/error/error",
+        "pattern": ".yyyy-MM-dd",
+        "alwaysIncludePattern": true
+      },
+      "runLogs": {
+        "type": "dateFile",
+        "filename": "/logs/run/run",
+        "pattern": ".yyyy-MM-dd",
+        "alwaysIncludePattern": true
+      }
+    },
+    "categories": {
+      "default": { "appenders": ["infoLogs"], "level": "INFO"},
+      "err": { "appenders": ["errorLogs"], "level": "ERROR"},
+      "run": { "appenders": ["runLogs"], "level": "INFO"}
+    }
+  }
+}
