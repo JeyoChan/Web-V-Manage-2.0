@@ -1,6 +1,6 @@
 const Router = require('restify-router').Router;
 
-const { SendService } = require('../../service/sendServiceV2');
+const { SendService } = require('../../service/sendService');
 const { WVResult } = require('../../utils/WVResultUtils');
 const { WVLogger } = require('../../utils/WVLog');
 const router = new Router();
