@@ -10,8 +10,8 @@ class ContainerRunService {
   }
 
   async noContainerExist() {
-    const num = await this.redis.pubsub('numsub', RedisConfig.DockerServiceSub);
-    return num === 0;
+    const numRes = await this.redis.pubsub('numsub', RedisConfig.DockerServiceSub);
+    return numRes && (numRes[1] === 0);
   }
 
   async pushTaskIntoQueue(code) {
