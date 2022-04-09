@@ -24,7 +24,7 @@
     "ioredis": "^4.17.3",
     "log4js": "^6.3.0",
     "md5-node": "^1.0.1",
-    "moment": "^2.27.0",
+    "moment": "^2.29.2",
     "restify": "^8.5.1",
     "restify-errors": "^8.0.2",
     "restify-router": "^0.6.1"
